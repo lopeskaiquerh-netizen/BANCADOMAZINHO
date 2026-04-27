@@ -1,64 +1,57 @@
-const db = require("./database");
+// Banco em memória (temporário)
+let consumos = [];
 
 console.log("INICIOU ARQUIVO");
 
+// Importações
 const express = require("express");
 const cors = require("cors");
 
 const app = express();
 
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
 /**
- * POST - salvar consumo
+ * ROTA POST - salvar consumo
  */
 app.post("/consumo", (req, res) => {
   const consumo = req.body;
 
-  console.log("🔥 CHEGOU NO BACKEND:", consumo);
+  if (!consumo) {
+    return res.status(400).json({ erro: "Dados não enviados" });
+  }
 
-  db.run(
-    `INSERT INTO consumos 
-     (primeiroNome, ultimoNome, setor, produto, quantidade, data)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      consumo.primeiroNome,
-      consumo.ultimoNome,
-      consumo.setor,
-      consumo.produto,
-      consumo.quantidade,
-      new Date().toISOString()
-    ],
-    function (err) {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ erro: "Erro ao salvar" });
-      }
+  const novoConsumo = {
+    ...consumo,
+    id: consumos.length + 1,
+    data: new Date()
+  };
 
-      console.log("💾 SALVO NO BANCO:", consumo);
+  consumos.push(novoConsumo);
 
-      res.json({ sucesso: true, id: this.lastID });
-    }
-  );
+  console.log("💾 SALVO:", novoConsumo);
+
+  res.json({ sucesso: true, id: novoConsumo.id });
 });
 
 /**
- * GET - listar consumos
+ * ROTA GET - listar consumos
  */
 app.get("/consumos", (req, res) => {
-  db.all("SELECT * FROM consumos", [], (err, rows) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ erro: err.message });
-    }
-
-    res.json(rows);
-  });
+  res.json(consumos);
 });
 
 /**
- * Servidor
+ * ROTA TESTE (opcional)
+ */
+app.get("/", (req, res) => {
+  res.send("API funcionando 🚀");
+});
+
+/**
+ * INICIAR SERVIDOR
  */
 const PORT = process.env.PORT || 3001;
 
