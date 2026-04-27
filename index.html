@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro de Consumo - Banca do Mazinho</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      font-size: 16px;
+    }
+
+    .produtos {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 15px 0;
+    }
+
+    .btn-produto {
+      padding: 20px;
+      font-size: 18px;
+      border: none;
+      border-radius: 10px;
+      background: #eee;
+      cursor: pointer;
+    }
+
+    .btn-produto.selecionado {
+      background: #4CAF50;
+      color: white;
+    }
+
+    button#registrar {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      background: black;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Registrar Consumo - Banca do Mazinho</h2>
+
+  <input id="primeiroNome" placeholder="Primeiro nome">
+  <input id="ultimoNome" placeholder="Último nome">
+  <input id="setor" placeholder="Setor">
+
+  <h3>Escolha o produto:</h3>
+
+  <div class="produtos">
+    <button class="btn-produto" onclick="selecionarProduto(this, 'Coxinha')">Coxinha</button>
+    <button class="btn-produto" onclick="selecionarProduto(this, 'Esfiha')">Esfiha</button>
+    <button class="btn-produto" onclick="selecionarProduto(this, 'Misto')">Misto</button>
+    <button class="btn-produto" onclick="selecionarProduto(this, 'Torta de Frango')">Torta de Frango</button>
+    <button class="btn-produto" onclick="selecionarProduto(this, 'Pão de queijo')">Pão de queijo</button>
+  </div>
+
+  <input id="quantidade" type="number" placeholder="Quantidade">
+
+  <button id="registrar" onclick="registrar()">Registrar</button>
+
+  <script>
+    let produtoSelecionado = null;
+
+    window.onload = () => {
+      document.getElementById("primeiroNome").value = localStorage.getItem("primeiroNome") || "";
+      document.getElementById("ultimoNome").value = localStorage.getItem("ultimoNome") || "";
+      document.getElementById("setor").value = localStorage.getItem("setor") || "";
+    };
+
+    function selecionarProduto(botao, produto) {
+      document.querySelectorAll(".btn-produto").forEach(btn => {
+        btn.classList.remove("selecionado");
+      });
+
+      botao.classList.add("selecionado");
+      produtoSelecionado = produto;
+    }
+
+    function normalizar(texto) {
+      return texto
+        .toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function registrar() {
+      console.log("ANTES DO FETCH");
+      const primeiroNome = normalizar(document.getElementById("primeiroNome").value);
+      const ultimoNome = normalizar(document.getElementById("ultimoNome").value);
+      const setor = normalizar(document.getElementById("setor").value);
+      const quantidade = document.getElementById("quantidade").value;
+
+      if (!primeiroNome || !ultimoNome || !setor || !produtoSelecionado || !quantidade) {
+        alert("Preencha todos os campos!");
+        return;
+      }
+
+      localStorage.setItem("primeiroNome", primeiroNome);
+      localStorage.setItem("ultimoNome", ultimoNome);
+      localStorage.setItem("setor", setor);
+
+      const consumo = {
+        primeiroNome,
+        ultimoNome,
+        setor,
+        produto: produtoSelecionado,
+        quantidade,
+        data: new Date()
+      };
+
+      fetch("http://localhost:3001/consumo", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(consumo)
+})
+.then(response => response.json())
+.then(data => {
+  console.log("Resposta do servidor:", data);
+  alert("Registrado com sucesso!");
+})
+.catch(error => {
+  console.error("Erro:", error);
+  alert("Erro ao registrar!");
+});
+
+
+      document.getElementById("quantidade").value = "";
+      produtoSelecionado = null;
+
+      document.querySelectorAll(".btn-produto").forEach(btn => {
+        btn.classList.remove("selecionado");
+      });
+    }
+  </script>
+
+</body>
+</html>
