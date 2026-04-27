@@ -1,57 +1,100 @@
-// Banco em memória (temporário)
-let consumos = [];
-
 console.log("INICIOU ARQUIVO");
 
-// Importações
+// IMPORTAÇÕES
 const express = require("express");
 const cors = require("cors");
+const { Pool } = require("pg");
 
 const app = express();
 
-// Middlewares
+// CONFIG BANCO (Render)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+// CRIA TABELA AUTOMATICAMENTE
+pool.query(`
+  CREATE TABLE IF NOT EXISTS consumos (
+    id SERIAL PRIMARY KEY,
+    primeiroNome TEXT,
+    ultimoNome TEXT,
+    setor TEXT,
+    produto TEXT,
+    quantidade INT,
+    data TIMESTAMP
+  );
+`)
+.then(() => console.log("✅ Tabela pronta"))
+.catch(err => console.error("❌ Erro ao criar tabela:", err));
+
+// MIDDLEWARES
 app.use(cors());
 app.use(express.json());
 
 /**
- * ROTA POST - salvar consumo
+ * POST - salvar consumo
  */
-app.post("/consumo", (req, res) => {
+app.post("/consumo", async (req, res) => {
   const consumo = req.body;
 
   if (!consumo) {
     return res.status(400).json({ erro: "Dados não enviados" });
   }
 
-  const novoConsumo = {
-    ...consumo,
-    id: consumos.length + 1,
-    data: new Date()
-  };
+  try {
+    await pool.query(
+      `INSERT INTO consumos 
+       (primeiroNome, ultimoNome, setor, produto, quantidade, data)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [
+        consumo.primeiroNome,
+        consumo.ultimoNome,
+        consumo.setor,
+        consumo.produto,
+        consumo.quantidade,
+        new Date()
+      ]
+    );
 
-  consumos.push(novoConsumo);
+    console.log("💾 SALVO NO BANCO:", consumo);
 
-  console.log("💾 SALVO:", novoConsumo);
+    res.json({ sucesso: true });
 
-  res.json({ sucesso: true, id: novoConsumo.id });
+  } catch (err) {
+    console.error("❌ ERRO AO SALVAR:", err);
+    res.status(500).json({ erro: "Erro ao salvar" });
+  }
 });
 
 /**
- * ROTA GET - listar consumos
+ * GET - listar consumos
  */
-app.get("/consumos", (req, res) => {
-  res.json(consumos);
+app.get("/consumos", async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM consumos ORDER BY id DESC"
+    );
+
+    res.json(result.rows);
+
+  } catch (err) {
+    console.error("❌ ERRO AO BUSCAR:", err);
+    res.status(500).json({ erro: "Erro ao buscar" });
+  }
 });
 
 /**
- * ROTA TESTE (opcional)
+ * ROTA TESTE
  */
 app.get("/", (req, res) => {
   res.send("API funcionando 🚀");
 });
 
 /**
- * INICIAR SERVIDOR
+ * SERVIDOR
  */
 const PORT = process.env.PORT || 3001;
 
